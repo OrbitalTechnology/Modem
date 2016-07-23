@@ -1,18 +1,47 @@
 #include "modem.hpp"
 
-void messageQueue(const Orbital::Queuing::Message msg) {
+void msgApplication(const Orbital::Queuing::Message msg) {
+	std::cout << "[application-messages] " << msg.Content() << std::endl;
 
+	ApplicationMessage* applicatioMessage = (ApplicationMessage*) &msg;
+
+	std::cout << applicatioMessage->Signal() << std::endl;
 }
 
-int main(int argc, char* argv[]) {	
-	Orbital::IO::Socket 	socket;
-	Orbital::Queuing::Queue queue("main_queue");
+void signalHandler (int signal) {
+	switch(signal) {
+		case SIGINT:
+			queue.Publish(ApplicationMessage(SIGINT));
+			running = false;
+			break;
 
-	queue.Subscribe(messageQueue);
+		case SIGTERM:
+			queue.Publish(ApplicationMessage(SIGTERM));
+			running = false;
+			break;
 
-	socket.SetAddress("0.0.0.0");
-	socket.SetPort(4895);
-	socket.Listen();
+		default:
+			std::cout << "Unknown Signal: " << signal << std::endl;
+			running = false;
+			break;
+	}
+}
+
+int main(int argc, char* argv[]) {		
+	if(signal(SIGINT, signalHandler) == SIG_ERR) {
+		std::cout << "Unable to register SIGINT handler" << std::endl;
+		return -1;
+	}
+	if(signal(SIGTERM, signalHandler) == SIG_ERR) {
+		std::cout << "Unable to register SIGKILL handler" << std::endl;
+		return -1;
+	}
+
+	queue.Subscribe(msgApplication);	
+
+	while(running && queue.Process()) {
+
+	}
 
 	return 0;
 }
