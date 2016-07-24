@@ -1,7 +1,17 @@
 #include "modem.hpp"
 
-std::deque<float> iData;
-std::deque<float> qData;
+std::deque<ComplexSignal> signalData;
+
+float localOscillatorFrequency = 1000.0f; //-(1500.0 + (425.0f / 2));
+float localOscillatorPhase = 0.0f;
+float localOscillatorDelta = localOscillatorFrequency / 44100;
+float localOscillatorAmplitude = 1.0f;
+float previousAngle = 0.0f;
+
+bool locked = false;
+bool phaseNegative = false;
+
+std::ofstream outputFile;
 
 int dataCallback(
 	const void *input, 
@@ -14,8 +24,39 @@ int dataCallback(
 	float* floatData = (float*) input;
 
 	for(unsigned int s = 0; s < frameCount; s++) {
-		iData.push_back(floatData[s]);
-		qData.push_back(0.0);
+		if (floatData[s] == 0.0) {
+			continue;
+		}
+
+		ComplexSignal signalSample(floatData[s]);
+		//ComplexSignal localOscillatorSample(cos(localOscillatorPhase) * (32768 * localOscillatorAmplitude));
+		ComplexSignal localOscillatorSample(localOscillatorPhase);
+
+		ComplexSignal result;
+
+		result.I = (signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q);//c.I = (s.I*lo.I) - (s.Q*lo.Q);
+		result.Q = (signalSample.Q * localOscillatorSample.I) - (signalSample.I * localOscillatorSample.Q);//c.Q = (s.Q*lo.I) + (s.I*lo.Q);
+
+		signalData.push_back(result);
+
+		float difference = previousAngle - result.Phase();
+		previousAngle = result.Phase();
+
+		outputFile << result.I << result.Q;
+
+		//outputFile << localOscillatorSample.I << ", " << localOscillatorSample.Q << ", " << localOscillatorSample.Phase() << ", " << localOscillatorSample.Amplitude() << std::endl;
+
+		if (difference < 0.1 && difference > -0.1) {
+			// No change
+		} else if(difference >= 0 && phaseNegative == true) {
+			// Phase Change
+			phaseNegative = false;
+		} else if (difference < 0 && phaseNegative == false) {
+			// Phase Change
+			phaseNegative = true;
+		}
+
+		localOscillatorPhase += localOscillatorDelta;
 	}
 
 	return paContinue;
@@ -84,8 +125,6 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Selected Device: " << selectedDevice << std::endl;
 
-    // PaDeviceInfo deviceInfo = Pa_GetDefaultInputDevice();//Pa_GetDeviceInfo(selectedDevice);
-
     PaStreamParameters inputParams;
     inputParams.device = Pa_GetDefaultInputDevice();
     inputParams.channelCount = 1;
@@ -102,6 +141,9 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Opened device" << std::endl;
+
+    // Open File
+    outputFile.open("/home/andy/lo.wav", std::ios::binary | std::ios::trunc);
 
     err = Pa_StartStream(stream);
     if (err != paNoError) {
