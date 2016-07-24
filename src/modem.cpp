@@ -1,11 +1,28 @@
 #include "modem.hpp"
 
+std::deque<float> iData;
+std::deque<float> qData;
+
+int dataCallback(
+	const void *input, 
+	void *output, 
+	unsigned long frameCount, 
+	const PaStreamCallbackTimeInfo* timeInfo, 
+	PaStreamCallbackFlags statusFlags, 
+	void *userData ) {
+	
+	float* floatData = (float*) input;
+
+	for(unsigned int s = 0; s < frameCount; s++) {
+		iData.push_back(floatData[s]);
+		qData.push_back(0.0);
+	}
+
+	return paContinue;
+}
+
 void msgApplication(const Orbital::Queuing::Message msg) {
 	std::cout << "[application-messages] " << msg.Content() << std::endl;
-
-	ApplicationMessage* applicatioMessage = (ApplicationMessage*) &msg;
-
-	std::cout << applicatioMessage->Signal() << std::endl;
 }
 
 void signalHandler (int signal) {
@@ -38,6 +55,59 @@ int main(int argc, char* argv[]) {
 	}
 
 	queue.Subscribe(msgApplication);	
+
+	PaStream* stream;
+    PaError err;
+
+    int selectedDevice = 0;
+
+    err = Pa_Initialize();
+    if(err != paNoError) {
+    	std::cerr << Pa_GetErrorText(err) << std::endl;
+    	return -1;
+    }
+
+    PaDeviceIndex deviceCount = Pa_GetDeviceCount();
+    if (deviceCount < 0) {
+    	std::cerr << Pa_GetErrorText(deviceCount) << std::endl;
+    	return -1;
+    }
+    std::cout << "Devices: " << deviceCount << std::endl;
+
+    for(unsigned d = 0; d < deviceCount; d++) {
+    	const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(d);
+    	std::cout << "Device " << d << ": " << deviceInfo->name << ": " << deviceInfo->maxInputChannels << "/" << deviceInfo->maxOutputChannels << std::endl;
+    	if (strcmp(deviceInfo->name, "pulse") == 0) {
+    		selectedDevice = d;
+    	}
+    }
+
+    std::cout << "Selected Device: " << selectedDevice << std::endl;
+
+    // PaDeviceInfo deviceInfo = Pa_GetDefaultInputDevice();//Pa_GetDeviceInfo(selectedDevice);
+
+    PaStreamParameters inputParams;
+    inputParams.device = Pa_GetDefaultInputDevice();
+    inputParams.channelCount = 1;
+    inputParams.sampleFormat = paFloat32,
+    inputParams.suggestedLatency = Pa_GetDeviceInfo(inputParams.device)->defaultLowInputLatency;
+    inputParams.hostApiSpecificStreamInfo = NULL;
+
+    std::cout << "Opening Device" << std::endl;
+
+    err = Pa_OpenStream(&stream, &inputParams, NULL, 44100, 256, paNoFlag, dataCallback, NULL);
+    if (err != paNoError) {
+    	std::cerr << Pa_GetErrorText(err) << std::endl;
+    	return -1;
+    }
+
+    std::cout << "Opened device" << std::endl;
+
+    err = Pa_StartStream(stream);
+    if (err != paNoError) {
+    	std::cerr << Pa_GetErrorText(err) << std::endl;
+    	return -1;
+    }
 
 	while(running && queue.Process()) {
 
