@@ -13,7 +13,17 @@ struct ComplexSignal {
 		Q = sin(value);
 	};
 
-	const float Amplitude() {
+	ComplexSignal(float i, float q) {
+	    I = i;
+	    Q = q;
+	};
+
+	void Sin(double phase) {
+	    I = cos(phase);
+	    Q = sin(phase);
+	}
+
+	const double Amplitude() {
 		return sqrt(I*I + Q*Q);
 	};
 

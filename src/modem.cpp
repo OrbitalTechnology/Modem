@@ -2,9 +2,9 @@
 
 std::deque<ComplexSignal> signalData;
 
-float localOscillatorFrequency = 1000.0f; //-(1500.0 + (425.0f / 2));
-float localOscillatorPhase = 0.0f;
-float localOscillatorDelta = localOscillatorFrequency / 44100;
+float localOscillatorFrequency = -(1500.0 + (1000.0f / 2));
+double localOscillatorPhase = 0.0;
+float localOscillatorDelta =  2 * M_PI * localOscillatorFrequency / 44100;
 float localOscillatorAmplitude = 1.0f;
 float previousAngle = 0.0f;
 
@@ -28,33 +28,17 @@ int dataCallback(
 			continue;
 		}
 
-		ComplexSignal signalSample(floatData[s]);
-		//ComplexSignal localOscillatorSample(cos(localOscillatorPhase) * (32768 * localOscillatorAmplitude));
-		ComplexSignal localOscillatorSample(localOscillatorPhase);
+		ComplexSignal signalSample(floatData[s], 0.0f);		
+		ComplexSignal localOscillatorSample;
+		localOscillatorSample.Sin(localOscillatorPhase);
 
-		ComplexSignal result;
+		ComplexSignal intermediate;
 
-		result.I = (signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q);//c.I = (s.I*lo.I) - (s.Q*lo.Q);
-		result.Q = (signalSample.Q * localOscillatorSample.I) - (signalSample.I * localOscillatorSample.Q);//c.Q = (s.Q*lo.I) + (s.I*lo.Q);
+		intermediate.I = (signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q);
+	    intermediate.Q = (signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I);
 
-		signalData.push_back(result);
-
-		float difference = previousAngle - result.Phase();
-		previousAngle = result.Phase();
-
-		outputFile << result.I << result.Q;
-
-		//outputFile << localOscillatorSample.I << ", " << localOscillatorSample.Q << ", " << localOscillatorSample.Phase() << ", " << localOscillatorSample.Amplitude() << std::endl;
-
-		if (difference < 0.1 && difference > -0.1) {
-			// No change
-		} else if(difference >= 0 && phaseNegative == true) {
-			// Phase Change
-			phaseNegative = false;
-		} else if (difference < 0 && phaseNegative == false) {
-			// Phase Change
-			phaseNegative = true;
-		}
+		outputFile.write((char *)&intermediate.I, sizeof(float));
+		outputFile.write((char *)&intermediate.Q, sizeof(float));
 
 		localOscillatorPhase += localOscillatorDelta;
 	}
