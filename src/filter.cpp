@@ -5,10 +5,6 @@
 
 namespace OrbitalTechnology {
 	namespace DSP {
-		Filter::Filter() {
-
-		}
-
 		Filter::Filter(const uint16_t poleCount, const float low, const float high) {
 			this->m_PoleCount = poleCount;
 			this->m_LowFrequency = low;
@@ -20,34 +16,41 @@ namespace OrbitalTechnology {
 		}
 
 		void Filter::GenerateCoefficients() {
-			// fsr = 44100 - sample rate
-			// fc = 0 - lower frequency
-			// bw = 3000 - bandwidth (at least fsr/n AND < fsr/2)
-			// nt = 128 - number taps
-			// g = 1 - gain
-
-			float a;
 			float g = 0.5;
-			float ys;
-			float yg;
-			float yw;
-			float yf;
+			float fsr = 44100;			
 
 			float bw = this->m_HighFrequency - this->m_LowFrequency;
-			float fsr = 44100;
 			float fc = this->m_LowFrequency + (bw / 2);
+			float tapCount = this->m_PoleCount;
 
-			for(unsigned int i = 0; i < this->m_PoleCount-1; ++i) {
-				a = (i - this->m_PoleCount/2) * 2.0 * M_PI * (bw/fsr);
+			std::cout << "Filter:" << std::endl 
+				<< "\tTaps: " << tapCount << std::endl
+				<< "\tLF: " << this->m_LowFrequency << std::endl
+				<< "\tHF: " << this->m_HighFrequency << std::endl
+				<< "\tBW: " << bw << std::endl
+				<< "\tCenter: " << fc << std::endl << std::endl;
+
+			for (unsigned int i = 0; i < tapCount - 1; ++i) {
+				float a;
+				float ys;
+				float yg;
+				float yw;
+				float yf;
+
+				a = (i - tapCount / 2) * 2.0 * M_PI * (bw / fsr);
+
 				if (a != 0.0f) {
 					ys = sin(a) / a;
 				} else {
 					ys = 1.0f;
 				}
-				yg = g * (4.0 * bw/fsr);
-				yw = 0.54 - 0.46 * cos(i * 2.0 * M_PI/this->m_PoleCount);
-				yf = cos((i - (this->m_PoleCount / 2)) * 2.0 * M_PI * fc/fsr);
+				
+				yg = g * (4.0 * bw / fsr);
+				yw = 0.54 - 0.46 * cos(i * 2.0 * M_PI / tapCount);
+				yf = cos((i - (tapCount / 2)) * 2.0 * M_PI * fc / fsr);
+				
 				float coeff = yf * yw * yg * ys;
+				
 				this->m_Coefficients.push_back(coeff);
 			}
 		}
@@ -57,14 +60,15 @@ namespace OrbitalTechnology {
 			this->m_Samples.push_back(input);
 
 			if(this->m_Samples.size() < this->m_PoleCount) {
-				// Not enough samples yet
+				// Not enough sample data yet
 				return 0.0f;
 			}
 
 			float accumulator = 0.0f;
-			float poles = this->m_PoleCount;
-			for(uint16_t n = poles; n > 0; --n) {
-				accumulator += ((this->m_Coefficients[poles - 1 + n]) * (this->m_Samples[n]));
+			float tapCount = this->m_PoleCount;
+
+			for(uint16_t n = tapCount; n > 0; --n) {
+				accumulator += ((this->m_Coefficients[tapCount - 1 + n]) * (this->m_Samples[n]));
 			}
 
 			this->m_Samples.pop_front();

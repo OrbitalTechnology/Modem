@@ -1,7 +1,7 @@
 #include "modem.hpp"
 
-OrbitalTechnology::DSP::Filter bandPassFilterI(64, 100.0f, 1000.0f);
-OrbitalTechnology::DSP::Filter bandPassFilterQ(64, 100.0f, 1000.0f);
+OrbitalTechnology::DSP::Filter bandPassFilterI(128, 100.0f, 1000.0f);
+OrbitalTechnology::DSP::Filter bandPassFilterQ(128, 100.0f, 1000.0f);
 
 double localOscillatorPhase = 0.0;
 float localOscillatorFrequency = -(1500.0 + (1000.0f / 2));
@@ -10,6 +10,8 @@ float localOscillatorAmplitude = 1.0f;
 
 std::deque<ComplexSignal> signalData;
 std::ofstream outputFile;
+
+bool writing = false;
 
 int dataCallback(
 	const void *input, 
@@ -23,8 +25,14 @@ int dataCallback(
 
 	for(unsigned int s = 0; s < frameCount; s++) {
 		if (floatData[s] == 0.0) {
+			if (writing) {
+				writing = false;
+				std::cout << "Finished Writing" << std::endl;
+			}
 			continue;
 		}
+
+		writing = true;
 
 		ComplexSignal signalSample(floatData[s], 0.0f);		
 		ComplexSignal localOscillatorSample;

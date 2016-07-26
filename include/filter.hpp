@@ -8,7 +8,6 @@ namespace OrbitalTechnology {
 	namespace DSP {
 		class Filter {
 			public:
-				Filter();
 				Filter(const uint16_t poleCount, const float low, const float high);
 				~Filter();
 
