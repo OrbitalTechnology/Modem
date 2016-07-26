@@ -1,16 +1,14 @@
 #include "modem.hpp"
 
-std::deque<ComplexSignal> signalData;
+OrbitalTechnology::DSP::Filter bandPassFilterI(64, 100.0f, 1000.0f);
+OrbitalTechnology::DSP::Filter bandPassFilterQ(64, 100.0f, 1000.0f);
 
-float localOscillatorFrequency = -(1500.0 + (1000.0f / 2));
 double localOscillatorPhase = 0.0;
+float localOscillatorFrequency = -(1500.0 + (1000.0f / 2));
 float localOscillatorDelta =  2 * M_PI * localOscillatorFrequency / 44100;
 float localOscillatorAmplitude = 1.0f;
-float previousAngle = 0.0f;
 
-bool locked = false;
-bool phaseNegative = false;
-
+std::deque<ComplexSignal> signalData;
 std::ofstream outputFile;
 
 int dataCallback(
@@ -34,8 +32,8 @@ int dataCallback(
 
 		ComplexSignal intermediate;
 
-		intermediate.I = (signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q);
-	    intermediate.Q = (signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I);
+		intermediate.I = bandPassFilterI.Process((signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q));
+	    intermediate.Q = bandPassFilterQ.Process((signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I));
 
 		outputFile.write((char *)&intermediate.I, sizeof(float));
 		outputFile.write((char *)&intermediate.Q, sizeof(float));
@@ -80,6 +78,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	queue.Subscribe(msgApplication);	
+
+	bandPassFilterI.GenerateCoefficients();
+	bandPassFilterQ.GenerateCoefficients();
 
 	PaStream* stream;
     PaError err;

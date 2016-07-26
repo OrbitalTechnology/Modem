@@ -12,6 +12,7 @@
 #include "queue.hpp"
 
 #include "applicationmessage.hpp"
+#include "filter.hpp"
 
 Orbital::Queuing::Queue queue("application-messages");
 
