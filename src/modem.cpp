@@ -38,13 +38,13 @@ int dataCallback(
 		ComplexSignal localOscillatorSample;
 		localOscillatorSample.Sin(localOscillatorPhase);
 
-		ComplexSignal intermediate;
+		// ComplexSignal intermediate;
 
-		intermediate.I = bandPassFilterI.Process((signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q));
-	    intermediate.Q = bandPassFilterQ.Process((signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I));
+		// intermediate.I = (signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q);//bandPassFilterI.Process((signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q));
+	 //    intermediate.Q = (signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I);//bandPassFilterQ.Process((signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I));
 
-		outputFile.write((char *)&intermediate.I, sizeof(float));
-		outputFile.write((char *)&intermediate.Q, sizeof(float));
+		outputFile.write((char *)&signalSample.I, sizeof(float));
+		outputFile.write((char *)&signalSample.Q, sizeof(float));
 
 		localOscillatorPhase += localOscillatorDelta;
 	}
