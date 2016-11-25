@@ -28,6 +28,7 @@ int dataCallback(
 			if (writing) {
 				writing = false;
 				std::cout << "Finished Writing" << std::endl;
+				running = false;
 			}
 			continue;
 		}

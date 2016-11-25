@@ -8,7 +8,6 @@
 #include <fstream>
 
 #include "complex.hpp"
-#include "socket.hpp"
 #include "queue.hpp"
 
 #include "applicationmessage.hpp"
