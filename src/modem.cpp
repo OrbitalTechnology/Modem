@@ -9,7 +9,8 @@ float localOscillatorDelta =  2 * M_PI * localOscillatorFrequency / 44100;
 float localOscillatorAmplitude = 1.0f;
 
 std::deque<ComplexSignal> signalData;
-std::ofstream outputFile;
+std::ofstream signalFile;
+std::ofstream intermediateFile;
 
 bool writing = false;
 
@@ -24,14 +25,14 @@ int dataCallback(
 	float* floatData = (float*) input;
 
 	for(unsigned int s = 0; s < frameCount; s++) {
-		if (floatData[s] == 0.0) {
-			if (writing) {
-				writing = false;
-				std::cout << "Finished Writing" << std::endl;
-				running = false;
-			}
-			continue;
-		}
+		// if (floatData[s] == 0.0) {
+		// 	if (writing) {
+		// 		writing = false;
+		// 		std::cout << "Finished Writing" << std::endl;
+		// 		running = false;
+		// 	}
+		// 	continue;
+		// }
 
 		writing = true;
 
@@ -39,13 +40,16 @@ int dataCallback(
 		ComplexSignal localOscillatorSample;
 		localOscillatorSample.Sin(localOscillatorPhase);
 
-		// ComplexSignal intermediate;
+		ComplexSignal intermediate;
 
-		// intermediate.I = (signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q);//bandPassFilterI.Process((signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q));
-	 //    intermediate.Q = (signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I);//bandPassFilterQ.Process((signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I));
+		intermediate.I = (signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q);//bandPassFilterI.Process((signalSample.I * localOscillatorSample.I) - (signalSample.Q * localOscillatorSample.Q));
+	    intermediate.Q = (signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I);//bandPassFilterQ.Process((signalSample.I * localOscillatorSample.Q) + (signalSample.Q * localOscillatorSample.I));
 
-		outputFile.write((char *)&signalSample.I, sizeof(float));
-		outputFile.write((char *)&signalSample.Q, sizeof(float));
+		signalFile.write((char *)&signalSample.I, sizeof(float));
+		signalFile.write((char *)&signalSample.Q, sizeof(float));
+
+		intermediateFile.write((char *)&intermediate.I, sizeof(float));
+		intermediateFile.write((char *)&intermediate.Q, sizeof(float));
 
 		localOscillatorPhase += localOscillatorDelta;
 	}
@@ -134,10 +138,11 @@ int main(int argc, char* argv[]) {
     	return -1;
     }
 
-    std::cout << "Opened device" << std::endl;
+    std::cout << "Opened Device" << std::endl;
 
     // Open File
-    outputFile.open("/home/andy/lo.wav", std::ios::binary | std::ios::trunc);
+    signalFile.open("signal.wav", std::ios::binary | std::ios::trunc);
+    intermediateFile.open("intermediate.wav", std::ios::binary | std::ios::trunc);
 
     err = Pa_StartStream(stream);
     if (err != paNoError) {
